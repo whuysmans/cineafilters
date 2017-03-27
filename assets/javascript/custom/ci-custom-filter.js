@@ -31,6 +31,10 @@
     })
   }
 
+  function clearFilter () {
+    activeFilters = {}
+  }
+
   // create the domelements that represent the filters
   function renderFilters (msg) {
     var filterList = document.createElement('ul')
@@ -41,7 +45,8 @@
       var taxTerms = document.createElement('ul')
       taxGroup.setAttribute('is-tax', filterGroup['meta']['is_tax'])
       taxGroup.setAttribute('is-cpt', filterGroup['meta']['is_cpt'])
-      taxGroup.appendChild(document.createTextNode(filterGroup['meta']['name']))
+      // taxGroup.appendChild(document.createTextNode(filterGroup['meta']['name']))
+      taxGroup.innerHTML = filterGroup['meta']['name']
       taxGroup.appendChild(taxTerms)
 
       filterGroup['filters'].forEach(function (term) {
@@ -80,7 +85,7 @@
     var paramArr = str.split('&')
     paramArr.map(function (substr) {
       var tempArr = substr.split('=')
-      var key = tempArr[0]
+      var key = tempArr[0].replace('cinea_', '')
       var value = tempArr[1]
       var myObj = new Object()
       myObj.key = key
@@ -99,25 +104,22 @@
     // trigger clicks on each of the search params in order to filter the results
     params.map(function (paramObj) {
       var node = document.querySelector('li[filter-group=' + paramObj.key + '][slug=' + paramObj.value + ']')
-      var event = new MouseEvent('click', {
-        'view': window,
-        'bubbles': true,
-        'cancelable': true
-      })
-      node.dispatchEvent(event)
+      updateFilters(node)
     })
+    // trigger query when we've updated all filters & the filter state object
+    handleFilterChange()
   }
 
-  // handle click on filter, update filter state object
-  function handleFilterClick (e) {
-    var filterGroup = e.target.getAttribute('filter-group')
-    var slug = e.target.getAttribute('slug') // e.target.textContent.toLowerCase()
-    var id = e.target.getAttribute('filter-id') // e.target.textContent.toLowerCase()
+  // update filter list & manage filter state object
+  function updateFilters (node) {
+    var filterGroup = node.getAttribute('filter-group')
+    var slug = node.getAttribute('slug') // node.textContent.toLowerCase()
+    var id = node.getAttribute('filter-id') // node.textContent.toLowerCase()
 
     // set inactive flow
-    if (e.target.getAttribute('active') === 'true') {
-      e.target.setAttribute('active', 'false')
-      $(e.target).css('color', 'black')
+    if (node.getAttribute('active') === 'true') {
+      node.setAttribute('active', 'false')
+      $(node).css('color', 'black')
       // remove from filter object
       var index = activeFilters[ filterGroup ].map(function (elem) {
         return elem.slug
@@ -128,9 +130,9 @@
         delete activeFilters[ filterGroup ]
 
     // set active flow
-    } else if (e.target.getAttribute('active') === 'false') {
-      e.target.setAttribute('active', 'true')
-      $(e.target).css('color', 'green')
+    } else if (node.getAttribute('active') === 'false') {
+      node.setAttribute('active', 'true')
+      $(node).css('color', 'green')
       // we need objects with multiple props
       var termObj = {
         'slug': slug,
@@ -144,12 +146,18 @@
         activeFilters[ filterGroup ].push(termObj)
       }
     }
+  }
+
+  // handle click on filter, update filter state object & trigger query
+  function handleFilterClick (e) {
+    updateFilters(e.target)
     handleFilterChange()
   }
 
   // call helper function for url update and do the query
   function handleFilterChange () {
     createFakeSearchString()
+    console.log(activeFilters)
     $.ajax({
       method: 'POST',
       url: custom_filter.ajax_url,
@@ -176,7 +184,7 @@
       // get the terms and add them to the query string
       activeFilters[ item ].forEach(function (term) {
         // var str = term.slug.replace(/\s/g, '')
-        queryString += item + '=' + term.slug + '&'
+        queryString += 'cinea_' + item + '=' + term.slug + '&'
       })
     }
     // remove trailing ampersand

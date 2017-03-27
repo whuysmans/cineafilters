@@ -17,7 +17,7 @@ class Params {
 				'hierarchical' => false,
 			) );
 			$result[ $param ][ 'meta' ] = array( 'is_tax' => true, 'is_cpt' => false, 
-				'name' => str_replace('&#039;', "'", $taxonomy->label), 'slug' => $param);
+				'name' => $taxonomy->label, 'slug' => $param);
 			$result[ $param ][ 'filters' ] = $terms;
 		}
 		
@@ -35,7 +35,7 @@ class Params {
 			$result[ 'event' ][ 'filters' ][] = (object) array( 'name' => $event->post_title,
 													'id' => $event->ID, 'slug' => $event->post_name );
 		}
-		write_log($result);
+		// write_log($result);
 		return $result;
 	}
 
@@ -49,7 +49,7 @@ class Queries {
 
 		if( $paramsArray ) {
 			//we need all those arrays
-			$args = array();
+			$args = array( 'posts_per_page' => -1 );
 			$taxQuery = array( );
 			$metaQuery = array();
 			$eventsArray = array();
