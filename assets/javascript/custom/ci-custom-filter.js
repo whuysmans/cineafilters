@@ -68,18 +68,43 @@
       })
       filterList.appendChild(taxGroup)
     }
-    var main = document.querySelector('.header-filter')
+    var main = document.querySelector('.filterlist')
     var parent = main.parentNode
     parent.insertBefore(filterList, main)
+
+    // search part
+    buildSearch()
   }
 
-  // helper function to parse search get params
+  function buildSearch (data) {
+    var input = document.querySelector('input[type=search]')
+    var items = document.querySelectorAll('.ci-filter')
+    var data = new Array()
+    items.forEach(function (item) {
+      data.push(item.textContent)
+    })
+    var aws = new Awesomplete(input)
+    aws.list = data
+    window.addEventListener('awesomplete-selectcomplete', function (e) {
+      console.log(e.text.value)
+      var node = document.querySelector('li[slug=' + e.text.value.toLowerCase() + ']')
+      activeFilters = {}
+      updateFilters(node)
+      handleFilterChange()
+    })
+  }
+
+  function isSearch () {
+    return window.location.search.substr(1).indexOf('s') === 0
+  }
+
+  // helper function to parse filter get params
   function getParams () {
     var paramStr = window.location.search.substr(1)
     return paramStr != null && paramStr != '' ? makeArray(paramStr) : []
   }
 
-  // helper helper function to parse search get params
+  // helper helper function to parse filter get params
   function makeArray (str) {
     var params = new Array()
     var paramArr = str.split('&')
@@ -97,6 +122,8 @@
 
   // this function handles direct links to filtered views
   function handleIncomingUrlParams () {
+    if (isSearch())
+      return
     var params = getParams()
     // no search params => no action
     if (params.length === 0)
