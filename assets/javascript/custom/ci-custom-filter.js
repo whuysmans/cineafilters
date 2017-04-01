@@ -76,6 +76,7 @@
     buildSearch()
   }
 
+  // search field logic for both filters and custom search terms
   function buildSearch (data) {
     var input = document.querySelector('input[type=search]')
     var items = document.querySelectorAll('.ci-filter')
@@ -83,19 +84,39 @@
     items.forEach(function (item) {
       data.push(item.textContent)
     })
+    // include autofill library
     var aws = new Awesomplete(input)
     aws.list = data
+    // case 1: catch enter on inputfield without click on suggestion => bypass awesomplete
+    input.addEventListener('keyup', function (e) {
+      if (e.keyCode === 13) {
+        var nodeItems = Array.prototype.filter.call(items, function (el) {
+          return el.innerText.toLowerCase() === e.target.value.toLowerCase()
+        })
+        if (nodeItems.length !== 0) {
+          var node = nodeItems[0]
+          // trigger change, with check forceFilterOn (don't deactivate if filter is already active)
+          updateFilters(node, true)
+          handleFilterChange()
+        }
+      }
+    })
+    // case 2: regular awesomplete logic on suggestion clicked
     window.addEventListener('awesomplete-selectcomplete', function (e) {
-      console.log(e.text.value)
-      var node = document.querySelector('li[slug=' + e.text.value.toLowerCase() + ']')
-      activeFilters = {}
-      updateFilters(node)
+      var nodeItems = Array.prototype.filter.call(items, function (el) {
+        return el.innerText === e.text.value
+      })
+      var node = nodeItems[0]
+      // trigger change, with check forceFilterOn (don't deactivate if filter is already active)
+      updateFilters(node, true)
       handleFilterChange()
+      input.value = ''
     })
   }
 
   function isSearch () {
-    return window.location.search.substr(1).indexOf('s') === 0
+    var str = window.location.search.substr(1)
+    return str.indexOf('s') === 0 && str.indexOf('=') === 1
   }
 
   // helper function to parse filter get params
@@ -122,13 +143,16 @@
 
   // this function handles direct links to filtered views
   function handleIncomingUrlParams () {
-    if (isSearch())
+    // important: do not trigger if this is a search request!
+    if (isSearch()) {
+      activeFilters = {}
       return
+    }
     var params = getParams()
-    // no search params => no action
+    // no filter params => no action
     if (params.length === 0)
       return
-    // trigger clicks on each of the search params in order to filter the results
+    // trigger clicks on each of the filter params in order to filter the results
     params.map(function (paramObj) {
       var node = document.querySelector('li[filter-group=' + paramObj.key + '][slug=' + paramObj.value + ']')
       updateFilters(node)
@@ -138,10 +162,15 @@
   }
 
   // update filter list & manage filter state object
-  function updateFilters (node) {
+  function updateFilters (node, forceFilterOn = false) {
     var filterGroup = node.getAttribute('filter-group')
     var slug = node.getAttribute('slug') // node.textContent.toLowerCase()
     var id = node.getAttribute('filter-id') // node.textContent.toLowerCase()
+
+    // via search: first check if filter is already on
+    if (forceFilterOn && node.getAttribute('active') === 'true') {
+      return
+    }
 
     // set inactive flow
     if (node.getAttribute('active') === 'true') {
@@ -184,7 +213,6 @@
   // call helper function for url update and do the query
   function handleFilterChange () {
     createFakeSearchString()
-    console.log(activeFilters)
     $.ajax({
       method: 'POST',
       url: custom_filter.ajax_url,
@@ -196,9 +224,13 @@
         filter(result)
       },
       error: function (err) {
-        console.log('err: ' + err)
+        // handleError(err)
       }
     })
+  }
+
+  function handleError (msg) {
+    alert(msg)
   }
 
   // update url query string so that it reflects the latest filter selection
@@ -217,9 +249,16 @@
     // remove trailing ampersand
     queryString = queryString.substring(0, queryString.length - 1)
     // push it
+    if (queryString === '')
+      queryString = clearUrl(window.location.href)
     if (window.history.pushState) {
       window.history.pushState(null, 'filter', queryString)
     }
+  }
+
+  function clearUrl (url) {
+    var cleanUrl = url.split('?')
+    return cleanUrl[0]
   }
 
   // show the query result on the page
@@ -229,6 +268,16 @@
       mainNode.removeChild(mainNode.firstChild)
     }
     $(mainNode).prepend(result)
+    setTimeout(function () {
+      updateCount()
+    }, 0)
+  }
+
+  function updateCount () {
+    var count = document.querySelectorAll('.article-preview').length
+    var countEl = document.querySelector('.result-count')
+    var articleStr = count === 1 ? 'ARTIKEL' : 'ARTIKELS'
+    countEl.innerText = count + ' ' + articleStr + ' in Magazine'
   }
 
   // initializing function

@@ -49,7 +49,7 @@ class Queries {
 
 		if( $paramsArray ) {
 			//we need all those arrays
-			$args = array( 'posts_per_page' => -1 );
+			$args = array( 'posts_per_page' => -1, 'post_status' => 'publish' );
 			$taxQuery = array( );
 			$metaQuery = array();
 			$eventsArray = array();
